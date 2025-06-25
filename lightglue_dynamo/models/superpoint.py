@@ -47,7 +47,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-
+from typing import Union, Tuple
 
 def simple_nms(scores: torch.Tensor, nms_radius: int) -> torch.Tensor:
     """Fast Non-maximum suppression to remove nearby points"""
@@ -80,7 +80,7 @@ class SuperPoint(nn.Module):
         self,
         descriptor_dim: int = 256,
         nms_radius: int = 4,
-        remove_borders: int | None = 4,
+        remove_borders: Union[int, None] = 4,
         num_keypoints: int = 1024,
     ):
         super().__init__()
@@ -119,7 +119,7 @@ class SuperPoint(nn.Module):
     def forward(
         self,
         image: torch.Tensor,  # (B, 1, H, W)
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute keypoints, scores, descriptors for image"""
         # Shared Encoder
         x = self.relu(self.conv1a(image))

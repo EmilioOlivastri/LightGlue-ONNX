@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from ..ops import multi_head_attention_dispatch
-
+from typing import Union
+ 
 torch.backends.cudnn.deterministic = True
 
 
@@ -236,7 +237,7 @@ class LightGlue(nn.Module):
 
     def get_pruning_mask(
         self,
-        confidences: torch.Tensor | None,
+        confidences: Union[torch.Tensor, None],
         scores: torch.Tensor,
         layer_index: int,
     ) -> torch.Tensor:

@@ -1,8 +1,12 @@
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Optional
+from typing_extensions import Annotated
 
 import cv2
 import typer
+import time
+
+import tensorrt as rt
 
 from lightglue_dynamo.cli_utils import check_multiple_of
 from lightglue_dynamo.config import Extractor, InferenceDevice
@@ -56,11 +60,11 @@ def export(
     from lightglue_dynamo.models import DISK, LightGlue, Pipeline, SuperPoint
     from lightglue_dynamo.ops import use_fused_multi_head_attention
 
-    match extractor_type:
-        case Extractor.superpoint:
-            extractor = SuperPoint(num_keypoints=num_keypoints)
-        case Extractor.disk:
-            extractor = DISK(num_keypoints=num_keypoints)
+    if extractor_type == Extractor.superpoint:
+        extractor = SuperPoint(num_keypoints=num_keypoints)
+    elif extractor_type == Extractor.disk:
+        extractor = DISK(num_keypoints=num_keypoints)
+
     matcher = LightGlue(**extractor_type.lightglue_config)
     pipeline = Pipeline(extractor, matcher).eval()
 
@@ -90,7 +94,8 @@ def export(
         dynamic_axes["images"][2] = "height"
     if width == 0:
         dynamic_axes["images"][3] = "width"
-    dynamic_axes |= {"matches": {0: "num_matches"}, "mscores": {0: "num_matches"}}
+    dynamic_axes.update({"matches": {0: "num_matches"}, "mscores": {0: "num_matches"}})
+    print('Starting export...')
     torch.onnx.export(
         pipeline,
         torch.zeros(batch_size or 2, extractor_type.input_channels, height or 256, width or 256),
@@ -101,6 +106,7 @@ def export(
         dynamic_axes=dynamic_axes,
     )
     onnx.checker.check_model(output)
+    #onnx.save_model(onnx.load_model(output), output)
     onnx.save_model(SymbolicShapeInference.infer_shapes(onnx.load_model(output), auto_merge=True), output)  # type: ignore
     typer.echo(f"Successfully exported model to {output}")
     if fp16:
@@ -151,19 +157,20 @@ def infer(
     from lightglue_dynamo import viz
     from lightglue_dynamo.preprocessors import DISKPreprocessor, SuperPointPreprocessor
 
+    print(f'Device = {device.value}')
+
     raw_images = [left_image_path, right_image_path]
     raw_images = [cv2.resize(cv2.imread(str(i)), (width, height)) for i in raw_images]
     images = np.stack(raw_images)
-    match extractor_type:
-        case Extractor.superpoint:
-            images = SuperPointPreprocessor.preprocess(images)
-        case Extractor.disk:
-            images = DISKPreprocessor.preprocess(images)
+
+    if extractor_type == Extractor.superpoint:
+        images = SuperPointPreprocessor.preprocess(images)
+    elif extractor_type == Extractor.disk:
+        images = DISKPreprocessor.preprocess(images)
     images = images.astype(np.float16 if fp16 and device != InferenceDevice.tensorrt else np.float32)
 
     session_options = ort.SessionOptions()
     session_options.enable_profiling = profile
-    # session_options.optimized_model_filepath = "weights/ort_optimized.onnx"
 
     providers = [("CPUExecutionProvider", {})]
     if device == InferenceDevice.cuda:
@@ -188,8 +195,17 @@ def infer(
 
     session = ort.InferenceSession(model_path, session_options, providers)
 
+    print(f'Warmup Inference on {device.value}...')
+    keypoints, matches, mscores = session.run(None, {"images": images})
+    print(f"Warmup Inference completed on {device.value}.")
+    '''
     for _ in range(100 if profile else 1):
         keypoints, matches, mscores = session.run(None, {"images": images})
+    '''
+    start_time = time.time()
+    keypoints, matches, mscores = session.run(None, {"images": images})
+    end_time = time.time()
+    print(f"Inference Time: {(end_time - start_time)} s")
 
     viz.plot_images(raw_images)
     viz.plot_matches(keypoints[0][matches[..., 1]], keypoints[1][matches[..., 2]], color="lime", lw=0.2)
@@ -251,21 +267,26 @@ def trtexec(
     raw_images = [left_image_path, right_image_path]
     raw_images = [cv2.resize(cv2.imread(str(i)), (width, height)) for i in raw_images]
     images = np.stack(raw_images)
-    match extractor_type:
-        case Extractor.superpoint:
-            images = SuperPointPreprocessor.preprocess(images)
-        case Extractor.disk:
-            images = DISKPreprocessor.preprocess(images)
+
+    if extractor_type == Extractor.superpoint:
+        images = SuperPointPreprocessor.preprocess(images)
+    elif extractor_type == Extractor.disk:
+        images = DISKPreprocessor.preprocess(images)
+
     images = images.astype(np.float32)
 
     # Build TensorRT engine
     if model_path.suffix == ".engine":
         build_engine = EngineFromBytes(BytesFromPath(str(model_path)))
     else:  # .onnx
-        build_engine = EngineFromNetwork(NetworkFromOnnxPath(str(model_path)), config=CreateConfig(fp16=fp16))
+        cfg = CreateConfig(fp16=fp16)  # 5 GB
+        #cfg.memory_pool_limits = {rt.MemoryPoolType.WORKSPACE: 4 * 1024 * 1024 * 1024}  # Set workspace limit to 5 GB
+        print(f'Cfg max memory pool limit: {cfg.memory_pool_limits}')
+        build_engine = EngineFromNetwork(NetworkFromOnnxPath(str(model_path)), config=cfg)
         build_engine = SaveEngine(build_engine, str(model_path.with_suffix(".engine")))
 
     with TrtRunner(build_engine) as runner:
+        print("Running warm-up inference...")
         for _ in range(10 if profile else 1):  # Warm-up if profiling
             outputs = runner.infer(feed_dict={"images": images})
             keypoints, matches, mscores = outputs["keypoints"], outputs["matches"], outputs["mscores"]  # noqa: F841

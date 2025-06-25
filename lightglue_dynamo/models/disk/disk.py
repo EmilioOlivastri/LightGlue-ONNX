@@ -2,9 +2,9 @@ import torch
 import torch.nn.functional as F
 
 from .unet import Unet
+from typing import Tuple
 
-
-def heatmap_to_keypoints(heatmap: torch.Tensor, n: int, window_size: int = 5):
+def heatmap_to_keypoints(heatmap: torch.Tensor, n: int, window_size: int = 5) -> Tuple[torch.Tensor, torch.Tensor]:
     # NMS
     b, _, h, w = heatmap.shape
     mask = F.max_pool2d(heatmap, kernel_size=window_size, stride=1, padding=window_size // 2)
@@ -45,7 +45,7 @@ class DISK(torch.nn.Module):
     def forward(
         self,
         image: torch.Tensor,  # (B, 3, H, W)
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         b = image.shape[0]
 
         unet_output: torch.Tensor = self.unet(image)

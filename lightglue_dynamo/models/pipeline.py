@@ -1,5 +1,5 @@
 import torch
-
+from typing import Tuple
 
 class Pipeline(torch.nn.Module):
     def __init__(self, extractor: torch.nn.Module, matcher: torch.nn.Module):
@@ -7,7 +7,7 @@ class Pipeline(torch.nn.Module):
         self.extractor = extractor
         self.matcher = matcher
 
-    def forward(self, images: torch.Tensor) -> tuple[torch.Tensor, ...]:
+    def forward(self, images: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         _, _, h, w = images.shape
         # Extract keypoints and features
         keypoints, scores, descriptors = self.extractor(images)

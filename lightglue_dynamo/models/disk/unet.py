@@ -4,10 +4,10 @@ import torch
 from torch import nn
 
 from .blocks import ThinUnetDownBlock, ThinUnetUpBlock
-
+from typing import List
 
 class Unet(nn.Module):
-    def __init__(self, in_features: int = 1, up: list[int] = [], down: list[int] = [], size: int = 5) -> None:  # noqa: B006
+    def __init__(self, in_features: int = 1, up: List[int] = [], down: List[int] = [], size: int = 5) -> None:  # noqa: B006
         super().__init__()
         if not len(down) == len(up) + 1:
             raise ValueError("`down` must be 1 item longer than `up`")

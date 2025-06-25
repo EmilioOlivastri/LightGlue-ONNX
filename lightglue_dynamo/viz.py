@@ -11,6 +11,7 @@ import matplotlib.patches
 import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Union
 
 
 def plot_images(imgs, titles=None, cmaps="gray", dpi=100, pad=0.5, adaptive=True):
@@ -22,7 +23,8 @@ def plot_images(imgs, titles=None, cmaps="gray", dpi=100, pad=0.5, adaptive=True
         adaptive: whether the figure size should fit the image aspect ratios.
     """
     n = len(imgs)
-    if not isinstance(cmaps, list | tuple):
+    #if not isinstance(cmaps, Union[list, tuple]):
+    if not isinstance(cmaps, list) and not isinstance(cmaps, tuple):
         cmaps = [cmaps] * n
 
     ratios = [i.shape[1] / i.shape[0] for i in imgs] if adaptive else [4 / 3] * n
@@ -80,7 +82,7 @@ def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0, labels=None, axe
     assert len(kpts0) == len(kpts1)
     if color is None:
         color = matplotlib.cm.hsv(np.random.rand(len(kpts0))).tolist()  # type: ignore  # noqa: NPY002
-    elif len(color) > 0 and not isinstance(color[0], tuple | list):
+    elif len(color) > 0 and not isinstance(color[0], tuple) and not isinstance(color[0], list):
         color = [color] * len(kpts0)
 
     if lw > 0:

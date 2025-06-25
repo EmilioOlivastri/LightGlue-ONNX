@@ -1,41 +1,53 @@
-<div align="right"> English | <a href="https://github.com/fabio-sim/LightGlue-ONNX/blob/main/docs/README.zh.md">简体中文</a> | <a href="https://github.com/fabio-sim/LightGlue-ONNX/blob/main/docs/README.ja.md">日本語</a></div>
-
-[![ONNX](https://img.shields.io/badge/ONNX-grey)](https://onnx.ai/)
-[![TensorRT](https://img.shields.io/badge/TensorRT-76B900)](https://developer.nvidia.com/tensorrt)
-[![GitHub Repo stars](https://img.shields.io/github/stars/fabio-sim/LightGlue-ONNX)](https://github.com/fabio-sim/LightGlue-ONNX/stargazers)
-[![GitHub all releases](https://img.shields.io/github/downloads/fabio-sim/LightGlue-ONNX/total)](https://github.com/fabio-sim/LightGlue-ONNX/releases)
-[![Blog](https://img.shields.io/badge/Blog-blue)](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/)
-
 # LightGlue ONNX
 
 Open Neural Network Exchange (ONNX) compatible implementation of [LightGlue: Local Feature Matching at Light Speed](https://github.com/cvg/LightGlue). The ONNX model format allows for interoperability across different platforms with support for multiple execution providers, and removes Python-specific dependencies such as PyTorch. Supports TensorRT and OpenVINO.
 
-> ✨ ***What's New***: End-to-end parallel dynamic batch size support. Read more in this [blog post](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/).
+> ✨ ***Original Repo***: This is an adapted version of the repo taken from [Fabio-Sim](https://github.com/fabio-sim), and for further information read this [blog post](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/). 
 
-<p align="center"><a href="https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/"><img src="assets/inference-comparison-speedup.svg" alt="Latency Comparison" width=90%></a><br><em>⏱️ Inference Time Comparison</em></p>
+## ⭐ Repo's Difference
+This repo adapts the original code from [LightGlue-ONNX](https://github.com/fabio-sim/LightGlue-ONNX) to work with Python 3.8.10 in a NVIDIA Orin NX with Jetpack 5.1.2 L4T 35.4.1, and ROS Noetic!
 
-<p align="center"><a href="https://arxiv.org/abs/2306.13643"><img src="assets/easy_hard.jpg" alt="LightGlue figure" width=80%></a></p>
+## ⭐ Instruction for installation
+To install the repo it is sufficient run the command to create a conda environment using the environment.yaml file provided
+```shell
+conda env create -f jetson_env.yaml
+conda activate lightglue_jetson
+```
+For Pytorch a specific version for the Jetson needs to be installed. In my case the version is **2.1.0a0+41361538.nv23.06**. 
+Please be sure to check [NVIDIA's support matrix](https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html). 
+Once you have checked the supported version based on your hardware and your Jetpack version (my case 5.1.2), follow this link here:
+```
+https://developer.download.nvidia.cn/compute/redist/jp/
+```
+It is going to redirect you to a page with the different version of Jetpack. So click on your version (if my version is 5.1.2 --> click on v512 ), then pytorch and there should be your own cuda enabled pytorch version.
+In order to install it in your environemt run the following command (in my case is this) with the env activated:
+```shell
+pip install --no-cache https://developer.download.nvidia.cn/compute/redist/jp/v512/https://developer.download.nvidia.cn/compute/redist/jp/v512/pytorch/torch-2.1.0a0+41361538.nv23.06-cp38-cp38-linux_aarch64.whl 
+```
+The original instructions can be found on NVIDIA's [webpage](https://docs.nvidia.com/deeplearning/frameworks/install-pytorch-jetson-platform/index.html).
 
-<details>
-<summary>Changelog</summary>
+Another tricky part of the installation is to find a compliant version of onnxruntime that has gpu. In this [link](https://elinux.org/Jetson_Zoo#ONNX_Runtime) can be found the pip wheel for your python and jetpack version. Dowload it and then run 
 
-- **17 July 2024**: End-to-end parallel dynamic batch size support. Revamp script UX. Add [blog post](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/).
-- **02 November 2023**: Introduce TopK-trick to optimize out ArgMax for about 30% speedup.
-- **04 October 2023:** Fused LightGlue ONNX Models with support for FlashAttention-2 via `onnxruntime>=1.16.0`, up to 80% faster inference on long sequence lengths (number of keypoints).
-- **27 October 2023**: LightGlue-ONNX added to [Kornia](https://kornia.readthedocs.io/en/latest/feature.html#kornia.feature.OnnxLightGlue)!
-- **04 October 2023**: Multihead-attention fusion optimization.
-- **19 July 2023**: Add support for TensorRT.
-- **13 July 2023**: Add support for Flash Attention.
-- **11 July 2023**: Add support for mixed precision.
-- **04 July 2023**: Add inference time comparisons.
-- **01 July 2023**: Add support for extractor `max_num_keypoints`.
-- **30 June 2023**: Add support for DISK extractor.
-- **28 June 2023**: Add end-to-end SuperPoint+LightGlue export & inference pipeline.
-</details>
+```shell
+pip install onnxruntime_gpu-1.17.0-cp38-cp38-linux_aarch64.whl
+```
+
+The final step is to install a compliant version of TensorRT. In order to do so just follow the instructions provided by NVIDIA [here](https://docs.nvidia.com/deeplearning/tensorrt/latest/installing-tensorrt/installing.html) and follow your preferred installation method.
+
+# ⚠️⚠️⚠️ 
+One thing that sometimes happens is that your TensorRT is not found when you create a virtual environment on the Jetson. To make sure that everything is found run the following command while your environemnt is activated.
+```shell
+export PYTHONPATH=/usr/lib/python3.8/dist-packages:$PYTHONPATH
+```
+Of course, the command depends on where your python distro is installed.
+
+My TensorRT version = **8.5.2.2**
+
+If there is anything missing in the steps please open and issues!
 
 ## ⭐ ONNX Export & Inference
 
-We provide a [typer](https://github.com/tiangolo/typer) CLI [`dynamo.py`](dynamo.py) to easily export LightGlue to ONNX and perform inference using ONNX Runtime. If you would like to try out inference right away, you can download ONNX models that have already been exported [here](https://github.com/fabio-sim/LightGlue-ONNX/releases).
+For inference and export, I have both used the provided [typer](https://github.com/tiangolo/typer) CLI [`dynamo.py`](dynamo.py) and the existing weights found [here](https://github.com/fabio-sim/LightGlue-ONNX/releases).
 
 ```shell
 $ python dynamo.py --help
@@ -115,7 +127,7 @@ python dynamo.py infer \
 </details>
 
 ## Credits
-If you use any ideas from the papers or code in this repo, please consider citing the authors of [LightGlue](https://arxiv.org/abs/2306.13643) and [SuperPoint](https://arxiv.org/abs/1712.07629) and [DISK](https://arxiv.org/abs/2006.13566). Lastly, if the ONNX versions helped you in any way, please also consider starring this repository.
+If you use any ideas from the papers or code in this repo, please consider citing the authors of [LightGlue](https://arxiv.org/abs/2306.13643) and [SuperPoint](https://arxiv.org/abs/1712.07629) and [DISK](https://arxiv.org/abs/2006.13566). Lastly, if the ONNX versions helped you in any way, please also consider starring the [original repository](https://github.com/fabio-sim/LightGlue-ONNX) that helped me get started.
 
 ```txt
 @inproceedings{lindenberger23lightglue,
