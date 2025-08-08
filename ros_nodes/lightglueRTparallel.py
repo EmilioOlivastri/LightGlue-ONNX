@@ -34,6 +34,11 @@ def unproject(image, kpt_left, kpt_right, camera_params):
     # Transform disparity in meters
     disparity = kpt_left[:, 0] - kpt_right[:, 0]
     depth = (fx1 * baseline) / (disparity + (cx2 - cx1))
+
+    # Remove negative depths
+    valid_depth_mask = depth > 0
+    kpt_left = kpt_left[valid_depth_mask]
+    depth = depth[valid_depth_mask]
     
     # Projection into 3D
     x = (kpt_left[:, 0] - cx1) * depth / fx1
@@ -127,8 +132,8 @@ class RosLightGlueWrapper:
     self.args = args
 
     # Store stereo parameters
-    self.left_stereo = create_params_dict(f'{args.camera_folder}/stereo_left.yaml', factor=2.0)
-    self.right_stereo = create_params_dict(f'{args.camera_folder}/stereo_right.yaml', factor=2.0)
+    self.left_stereo = create_params_dict(f'{args.camera_folder}/stereo_left_air.yaml', factor=2.0)
+    self.right_stereo = create_params_dict(f'{args.camera_folder}/stereo_right_air.yaml', factor=2.0)
     
     build_engine = EngineFromBytes(BytesFromPath(str(args.path2engine)))
     self.model = TrtRunner(build_engine)
