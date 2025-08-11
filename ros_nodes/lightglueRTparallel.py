@@ -132,9 +132,9 @@ class RosLightGlueWrapper:
     self.args = args
 
     # Store stereo parameters
-    self.left_stereo = create_params_dict(f'{args.camera_folder}/stereo_left_air.yaml', factor=2.0)
-    self.right_stereo = create_params_dict(f'{args.camera_folder}/stereo_right_air.yaml', factor=2.0)
-    
+    self.left_stereo = create_params_dict(f'{args.camera_folder}/stereo_left2_water.yaml', factor=2.0)
+    self.right_stereo = create_params_dict(f'{args.camera_folder}/stereo_right2_water.yaml', factor=2.0)
+
     build_engine = EngineFromBytes(BytesFromPath(str(args.path2engine)))
     self.model = TrtRunner(build_engine)
     self.model.__enter__()
